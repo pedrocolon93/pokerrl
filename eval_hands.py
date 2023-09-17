@@ -16,7 +16,7 @@ b = set(get_all_combinations(op_hand,all_cards))
 # dups = [[x for x in Counter(n).most_common()] for n in numbers]
 # for comb in numbers:
 #     comb.sort()
-    
+
 def is_flush(hand):
     hand = [int(x/13) for x in hand]
     if len(set(hand))==1:
@@ -41,7 +41,7 @@ def max_dups(hand):
     if duplicates == 1:
         all_numbers = [n[0] for n in hand]
         return max(all_numbers),1
-    
+
     return number,duplicates #either pair (2) or three of a kind (3)
 
 def get_all_combinations(my_cards,public_cards):
@@ -63,7 +63,7 @@ def get_all_combinations(my_cards,public_cards):
     hand_values+= [(n%13,1) for n in my_cards]
     return hand_values
 
-  def choose_winner(comb_a,comb_b):
+def choose_winner(comb_a,comb_b):
     unique_combos = comb_a ^ comb_b
     if len(unique_combos)==0:
         return 'Tie'
