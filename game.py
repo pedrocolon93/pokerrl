@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from enum import Enum
 from typing import *
 from treys import *
@@ -20,6 +21,8 @@ class Player:
     score:int = 0
     playing:bool = False
     player_history:[Action]
+
+    @abstractmethod
     def eval_turn(self, public_cards:[Card], other_players):
         pass
 
@@ -111,6 +114,8 @@ class Cardy:
     def __str__(self):
         return "Rank:"+str(self.rank)+" Suit:"+str(self.suit)
 
+
+print("Hello")
 if __name__ == '__main__':
     c = Card.new("Ah")
     ca = Cardy(c)
