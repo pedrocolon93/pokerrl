@@ -14,6 +14,8 @@ class Player:
         FOLD = 4
         CHECK = 5
         END = 6
+    is_small_blind = False
+    is_big_blind = False
     hand:[Card] = []
     score:int = 0
     playing:bool = False
@@ -40,9 +42,10 @@ class Game:
     class State(Enum):
         START = 0
         END = -1
-        FLOP = 1
-        TURN = 2
-        RIVER = 3
+        PREFLOP = 1
+        FLOP = 2
+        TURN = 3
+        RIVER = 4
 
     state = State.START
     #TODO new hand function that shuffles players
@@ -51,10 +54,34 @@ class Game:
         while self.state != Game.State.END:
             if self.state == Game.State.START:
                 for player in self.players:
-                    action = player.eval_turn()
+                    action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
+                    player.player_history.append(action)
+                self.state = Game.State.PREFLOP
+            elif self.state == Game.State.PREFLOP:
+                for player in self.players:
+                    action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
+                    player.player_history.append(action)
 
-        for player in self.players:
-            player_score = self.evaluator.evaluate(self.public_cards, player.hand)
+                self.state = Game.State.FLOP
+            elif self.state == Game.State.FLOP:
+                for player in self.players:
+                    action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
+                    player.player_history.append(action)
+
+                self.state = Game.State.TURN
+            elif self.state == Game.State.TURN:
+                for player in self.players:
+                    action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
+                    player.player_history.append(action)
+
+                self.state = Game.State.RIVER
+            elif self.state == Game.State.RIVER:
+                for player in self.players:
+                    action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
+                    player.player_history.append(action)
+
+                self.state = Game.State.END
+        player_scores = [self.evaluator.evaluate(self.public_cards, player.hand) for player in self.players]
         self.hand+=1
 
 
