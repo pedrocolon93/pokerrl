@@ -1,3 +1,4 @@
+import random
 from abc import abstractmethod
 from enum import Enum
 from typing import *
@@ -20,11 +21,38 @@ class Player:
     hand:[Card] = []
     score:int = 0
     playing:bool = False
-    player_history:[Action]
+    player_history:[Action] = []
 
     @abstractmethod
     def eval_turn(self, public_cards:[Card], other_players):
         pass
+
+
+class HumanPlayer(Player):
+
+    def eval_turn(self, public_cards: [Card], other_players):
+        print("Your cards are:")
+        print([Card.int_to_pretty_str(x) for x in self.hand])
+        print("The public cards are:")
+        print([Card.int_to_pretty_str(x) for x in public_cards])
+        print("What action do you do?")
+        move = input("1 - CALL, 2 - RAISE, 3 - RERAISE, 4 - FOLD, 5 - CHECK")
+        move = Player.Action(int(move))
+        print("Your action is: ",move.name)
+        return move
+
+class RandomPlayer(Player):
+
+    def eval_turn(self, public_cards: [Card], other_players):
+        print("Your cards are:")
+        print([Card.int_to_pretty_str(x) for x in self.hand])
+        print("The public cards are:")
+        print([Card.int_to_pretty_str(x) for x in public_cards])
+        print("What action do you do?")
+        move = random.randint(1,5)
+        move = Player.Action(move)
+        print("Your action is: ",move.name)
+        return move
 
 class Game:
 
@@ -34,13 +62,17 @@ class Game:
     hand:int = 0
     evaluator = Evaluator()
 
-    def setup_game(self, player_count = 1):
+    def setup_game(self, player_count = 1, use_human_players=False):
         self.state = Game.State.START
         self.deck.shuffle()
         self.public_cards = self.deck.draw(3)
         for player_number in range(player_count):
-            player = Player()
+            if use_human_players:
+                player = HumanPlayer()
+            else:
+                player = RandomPlayer()
             player.hand = self.deck.draw(2)
+            self.players.append(player)
 
     class State(Enum):
         START = 0
@@ -56,35 +88,41 @@ class Game:
     def game_loop(self):
         while self.state != Game.State.END:
             if self.state == Game.State.START:
-                for player in self.players:
-                    action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
-                    player.player_history.append(action)
+                # for player in self.players:
+                #     action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
+                #     player.player_history.append(action)
                 self.state = Game.State.PREFLOP
             elif self.state == Game.State.PREFLOP:
+                print("Starting the game...")
+                # Initial round of betting without seeing the table...
                 for player in self.players:
-                    action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
+                    action = player.eval_turn(public_cards=[], other_players=self.players)
                     player.player_history.append(action)
-
                 self.state = Game.State.FLOP
             elif self.state == Game.State.FLOP:
+                print("In flop...")
                 for player in self.players:
                     action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
                     player.player_history.append(action)
-
                 self.state = Game.State.TURN
             elif self.state == Game.State.TURN:
+                additional = self.deck.draw(1)
+                self.public_cards.extend(additional)
                 for player in self.players:
                     action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
                     player.player_history.append(action)
 
                 self.state = Game.State.RIVER
             elif self.state == Game.State.RIVER:
+                additional = self.deck.draw(1)
+                self.public_cards.extend(additional)
                 for player in self.players:
                     action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
                     player.player_history.append(action)
 
                 self.state = Game.State.END
         player_scores = [self.evaluator.evaluate(self.public_cards, player.hand) for player in self.players]
+        print(player_scores)
         self.hand+=1
 
 
@@ -115,9 +153,7 @@ class Cardy:
         return "Rank:"+str(self.rank)+" Suit:"+str(self.suit)
 
 
-print("Hello")
 if __name__ == '__main__':
-    c = Card.new("Ah")
-    ca = Cardy(c)
-    print(SuitMap[ca.suit])
-    print(ca)
+    g = Game()
+    g.setup_game(player_count=1,use_human_players=False)
+    g.game_loop()
