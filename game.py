@@ -12,9 +12,8 @@ class Player:
         START = 0
         CALL = 1
         RAISE = 2
-        RE_RAISE = 3
-        FOLD = 4
-        CHECK = 5
+        FOLD = 3
+        CHECK = 4
         END = 6
     is_small_blind = False
     is_big_blind = False
@@ -24,32 +23,36 @@ class Player:
     player_history:[Action] = []
 
     @abstractmethod
-    def eval_turn(self, public_cards:[Card], other_players):
+    def eval_turn(self, public_cards:[Card], other_players, other_raised):
         pass
 
 
 class HumanPlayer(Player):
 
-    def eval_turn(self, public_cards: [Card], other_players):
+    def eval_turn(self, public_cards: [Card], other_players, other_raised):
         print("Your cards are:")
         print([Card.int_to_pretty_str(x) for x in self.hand])
         print("The public cards are:")
         print([Card.int_to_pretty_str(x) for x in public_cards])
         print("What action do you do?")
-        move = input("1 - CALL, 2 - RAISE, 3 - RERAISE, 4 - FOLD, 5 - CHECK")
+        move = input("1 - CALL, 2 - RAISE, 3 - FOLD, 4 - CHECK")
         move = Player.Action(int(move))
         print("Your action is: ",move.name)
         return move
 
 class RandomPlayer(Player):
 
-    def eval_turn(self, public_cards: [Card], other_players):
+    def eval_turn(self, public_cards: [Card], other_players, other_raised):
         print("Your cards are:")
         print([Card.int_to_pretty_str(x) for x in self.hand])
         print("The public cards are:")
         print([Card.int_to_pretty_str(x) for x in public_cards])
         print("What action do you do?")
-        move = random.randint(1,5)
+        if other_raised != None:
+            move = random.randint(1,
+                                  2)  # If someone else raised then we need to either call (match bet) or raise
+        else:
+            move = random.randint(1,4) # TODO Need to take into account illogical actions and decrease the odds that it folds as turns progress
         move = Player.Action(move)
         print("Your action is: ",move.name)
         return move
@@ -61,6 +64,7 @@ class Game:
     public_cards:[Card] = []
     hand:int = 0
     evaluator = Evaluator()
+    max_raise_count = 2
 
     def setup_game(self, player_count = 1, use_human_players=False):
         self.state = Game.State.START
@@ -85,8 +89,37 @@ class Game:
     state = State.START
     #TODO new hand function that shuffles players
 
+    def _turn_loop(self):
+        player_raised = None
+        turn_raise_count = 0
+        while True:
+            for player in self.players:
+                # Skip the folded players
+                if len(player.player_history) > 0:
+                    if player.player_history[-1] == Player.Action.FOLD:
+                        continue
+                # Check if we went around completely
+                if player_raised is player:
+                    # We went a full round with other people not matching
+                    break
+                while True:
+                    action = player.eval_turn(public_cards=[], other_players=self.players,
+                                              other_raised=player_raised is None)
+                    if action == Player.Action.RAISE and turn_raise_count == self.max_raise_count:  # Ensure that bots / people only call /check  or fold if max amount of raises has been reached
+                        print("Max raises done, please call or fold.")
+                        continue
+                    break
+                player.player_history.append(action)
+                # If someone raised successfully then we count that and set who raised
+                if action == Player.Action.RAISE:
+                    turn_raise_count += 1
+                    player_raised = player
+            if player_raised is None:
+                break
     def game_loop(self):
         while self.state != Game.State.END:
+            # TODO take into account folds and re-raise
+            # TODO add betting / amounts
             if self.state == Game.State.START:
                 # for player in self.players:
                 #     action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
@@ -95,31 +128,21 @@ class Game:
             elif self.state == Game.State.PREFLOP:
                 print("Starting the game...")
                 # Initial round of betting without seeing the table...
-                for player in self.players:
-                    action = player.eval_turn(public_cards=[], other_players=self.players)
-                    player.player_history.append(action)
+                self._turn_loop()
                 self.state = Game.State.FLOP
             elif self.state == Game.State.FLOP:
                 print("In flop...")
-                for player in self.players:
-                    action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
-                    player.player_history.append(action)
+                self._turn_loop()
                 self.state = Game.State.TURN
             elif self.state == Game.State.TURN:
                 additional = self.deck.draw(1)
                 self.public_cards.extend(additional)
-                for player in self.players:
-                    action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
-                    player.player_history.append(action)
-
+                self._turn_loop()
                 self.state = Game.State.RIVER
             elif self.state == Game.State.RIVER:
                 additional = self.deck.draw(1)
                 self.public_cards.extend(additional)
-                for player in self.players:
-                    action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
-                    player.player_history.append(action)
-
+                self._turn_loop()
                 self.state = Game.State.END
         player_scores = [self.evaluator.evaluate(self.public_cards, player.hand) for player in self.players]
         print(player_scores)
