@@ -58,7 +58,6 @@ class RandomPlayer(Player):
         return move
 
 class Game:
-
     deck = Deck()
     players:[Player] = []
     public_cards:[Card] = []
@@ -121,9 +120,6 @@ class Game:
             # TODO take into account folds and re-raise
             # TODO add betting / amounts
             if self.state == Game.State.START:
-                # for player in self.players:
-                #     action = player.eval_turn(public_cards=self.public_cards, other_players=self.players)
-                #     player.player_history.append(action)
                 self.state = Game.State.PREFLOP
             elif self.state == Game.State.PREFLOP:
                 print("Starting the game...")
